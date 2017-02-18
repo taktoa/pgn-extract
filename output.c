@@ -24,6 +24,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <assert.h>
+
 #include "bool.h"
 #include "defs.h"
 #include "typedef.h"
@@ -153,6 +155,7 @@ which_output_format(const char *arg)
         { "xlalg", XLALG},
         { "uci", UCI},
         { "cm", CM},
+        { "json", JSON},
         { "", SOURCE},
         /* Add others before the terminating NULL. */
         { (const char *) NULL, SAN}
@@ -489,7 +492,7 @@ print_move_list(FILE *outputfile, unsigned move_number, Boolean white_to_move,
          */
         if (!GlobalState.check_only && (move != NULL) &&
                 (move->terminating_result != NULL)) {
-            if (GlobalState.output_FEN_string && 
+            if (GlobalState.output_FEN_string &&
                     GlobalState.FEN_comment_pattern == NULL &&
                     final_board != NULL) {
                 print_separator(outputfile);
@@ -594,7 +597,7 @@ print_move(FILE *outputfile, unsigned move_number, Boolean print_move_number,
             char *move_to_print;
 
             if (GlobalState.json_format) {
-                fputs("\"", outputfile);
+                output_format = JSON;
             }
             if (*move_text != '\0') {
                 if (GlobalState.keep_move_numbers &&
@@ -764,7 +767,63 @@ print_move(FILE *outputfile, unsigned move_number, Boolean print_move_number,
                         move_to_print = copy_string(algebraic);
                     }
                         break;
-                    default:
+
+                    case JSON: {
+                    const int algebraic_size = 2000;
+                    char* algebraic = malloc(algebraic_size);
+
+                    {
+                        const Col  cA = move_details->from_col;
+                        const Rank rA = move_details->from_rank;
+                        const Col  cB = move_details->to_col;
+                        const Rank rB = move_details->to_rank;
+                        const Piece captured = move_details->captured_piece;
+                        const Piece promoted = move_details->promoted_piece;
+                        const CheckStatus check = move_details->check_status;
+
+                        const char* s_cap = "";
+                        switch(captured) {
+                        case PAWN:   s_cap = "pawn";   break;
+                        case KNIGHT: s_cap = "knight"; break;
+                        case BISHOP: s_cap = "bishop"; break;
+                        case ROOK:   s_cap = "rook";   break;
+                        case QUEEN:  s_cap = "queen";  break;
+                        case KING:   s_cap = "king";   break;
+                        }
+
+                        const char* s_pro = "";
+                        switch(promoted) {
+                        case PAWN:   s_pro = "pawn";   break;
+                        case KNIGHT: s_pro = "knight"; break;
+                        case BISHOP: s_pro = "bishop"; break;
+                        case ROOK:   s_pro = "rook";   break;
+                        case QUEEN:  s_pro = "queen";  break;
+                        case KING:   s_pro = "king";   break;
+                        }
+
+                        char* p = algebraic;
+                        p += sprintf(p, "{ \"from\": [\"%c\", \"%c\"]",
+                                     move_details->from_col,
+                                     move_details->from_rank);
+                        p += sprintf(p, ", \"to\": [\"%c\", \"%c\"]",
+                                     move_details->to_col,
+                                     move_details->to_rank);
+                        if(captured != EMPTY) {
+                            p += sprintf(p, ", \"captured\": \"%s\"", s_cap);
+                        }
+                        if(promoted != EMPTY) {
+                            p += sprintf(p, ", \"promoted\": \"%s\"", s_pro);
+                        }
+                        p += sprintf(p, " }");
+                        assert((p - algebraic) <= algebraic_size);
+                    }
+
+                    move_to_print = copy_string(algebraic);
+
+                    free(algebraic);
+                    } break;
+
+                default:
                         fprintf(GlobalState.logfile,
                                 "Unknown output format %d in print_move()\n",
                                 output_format);
@@ -788,9 +847,6 @@ print_move(FILE *outputfile, unsigned move_number, Boolean print_move_number,
                     print_str(outputfile, move_to_print);
                 }
                 (void) free(move_to_print);
-            }
-            if (GlobalState.json_format) {
-                fputs("\"", outputfile);
             }
             /* Print further information, that may be attached to moves
              * and comments.

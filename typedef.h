@@ -35,11 +35,12 @@
      *            en-passant notation and either - or x between squares for
      *            non-capture and capture moves respectively.
      *     UCI: UCI-compatible format - actually LALG.
+     *     JSON: Used in the JSON output mode.
      */
 #ifndef TYPEDEF_H
 #define TYPEDEF_H
 
-typedef enum { SOURCE, SAN, EPD, CM, LALG, HALG, ELALG, XLALG, UCI } OutputFormat;
+typedef enum { SOURCE, SAN, EPD, CM, LALG, HALG, ELALG, XLALG, UCI, JSON } OutputFormat;
 
     /* Define a type to specify whether a move gives check, checkmate,
      * or nocheck.
@@ -76,7 +77,7 @@ typedef struct variation{
  */
 #define MAX_MOVE_LEN 15
 
-        /* Retain the text of a move and any associated 
+        /* Retain the text of a move and any associated
          * NAGs and comments.
          */
 typedef struct move {
@@ -324,4 +325,3 @@ extern StateInfo GlobalState;
 FILE *must_open_file(const char *filename,const char *mode);
 
 #endif	// TYPEDEF_H
-
